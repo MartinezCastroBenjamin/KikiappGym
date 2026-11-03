@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0A0A0A" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GymTracker" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <title>Gym Tracker — Liquid Glass PWA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    * {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #0A0A0A;
+      color: #FAFAFA;
+      overflow-x: hidden;
+    }
+    /* Liquid Glass Surfaces */
+    .liquid-card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 10px 30px -10px rgba(0,0,0,0.7), inset 0 1px 0 0 rgba(255,255,255,0.15);
+    }
+    .liquid-btn {
+      background: linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.22);
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .liquid-btn:active {
+      transform: scale(0.96);
+    }
+    .liquid-btn-primary {
+      background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(212,212,216,0.88) 100%);
+      color: #09090B;
+      border: 1px solid rgba(255,255,255,0.9);
+      box-shadow: 0 8px 25px rgba(255,255,255,0.14), inset 0 1px 0 rgba(255,255,255,1);
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .liquid-btn-primary:active {
+      transform: scale(0.97);
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body class="bg-[#0A0A0A] text-zinc-100 min-h-screen selection:bg-white/20">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    const DEFAULT_ROUTINE = [
+      {
+        dayIndex: 0,
+        name: "Día 1 · Pecho y Espalda",
+        focus: "Torso fuerza e hipertrofia",
+        exercises: [
+          { id: "d1e1", name: "Press de Banca Plano", targetSets: 4, targetReps: 8, targetWeight: 70 },
+          { id: "d1e2", name: "Remo con Barra", targetSets: 4, targetReps: 10, targetWeight: 65 },
+          { id: "d1e3", name: "Press Inclinado con Mancuernas", targetSets: 3, targetReps: 10, targetWeight: 25 },
+          { id: "d1e4", name: "Jalón al Pecho Polea", targetSets: 3, targetReps: 12, targetWeight: 55 }
+        ]
+      },
+      {
+        dayIndex: 1,
+        name: "Día 2 · Brazos y Hombros",
+        focus: "Bíceps, Tríceps y Deltoides",
+        exercises: [
+          { id: "d2e1", name: "Press Militar con Mancuernas", targetSets: 4, targetReps: 8, targetWeight: 22.5 },
+          { id: "d2e2", name: "Curl de Bíceps con Barra Z", targetSets: 4, targetReps: 10, targetWeight: 35 },
+          { id: "d2e3", name: "Press Francés / Rompecráneos", targetSets: 4, targetReps: 10, targetWeight: 32.5 },
+          { id: "d2e4", name: "Vuelos Laterales", targetSets: 4, targetReps: 15, targetWeight: 12.5 }
+        ]
+      },
+      {
+        dayIndex: 2,
+        name: "Día 3 · Piernas Completo",
+        focus: "Cuádriceps, Isquios y Gemelos",
+        exercises: [
+          { id: "d3e1", name: "Sentadilla Libre", targetSets: 4, targetReps: 8, targetWeight: 95 },
+          { id: "d3e2", name: "Peso Muerto Rumano", targetSets: 4, targetReps: 10, targetWeight: 85 },
+          { id: "d3e3", name: "Prensa 45°", targetSets: 3, targetReps: 12, targetWeight: 160 },
+          { id: "d3e4", name: "Elevación de Gemelos", targetSets: 4, targetReps: 15, targetWeight: 70 }
+        ]
+      },
+      {
+        dayIndex: 3,
+        name: "Día 4 · Full Upper / Potencia",
+        focus: "Hipertrofia y puntos débiles",
+        exercises: [
+          { id: "d4e1", name: "Dominadas / Lastre", targetSets: 4, targetReps: 8, targetWeight: 10 },
+          { id: "d4e2", name: "Fondos en Paralelas", targetSets: 4, targetReps: 10, targetWeight: 15 },
+          { id: "d4e3", name: "Curl Martillo con Mancuernas", targetSets: 3, targetReps: 12, targetWeight: 17.5 },
+          { id: "d4e4", name: "Extensión de Tríceps en Polea", targetSets: 3, targetReps: 12, targetWeight: 30 }
+        ]
+      }
+    ];
+
+    function getMondayKey(dateObj) {
+      const d = new Date(dateObj);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diff));
+      return monday.toISOString().slice(0, 10);
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${s < 10 ? "0" : ""}${s}`;
+    }
+
+    function App() {
+      const [activeTab, setActiveTab] = useState("workout");
+      const [showWelcome, setShowWelcome] = useState(true);
+
+      const [routine, setRoutine] = useState(() => {
+        const saved = localStorage.getItem("gym_lg_routine");
+        return saved ? JSON.parse(saved) : DEFAULT_ROUTINE;
+      });
+
+      const [logs, setLogs] = useState(() => {
+        const saved = localStorage.getItem("gym_lg_logs");
+        return saved ? JSON.parse(saved) : [];
+      });
+
+      const [weekState, setWeekState] = useState(() => {
+        const saved = localStorage.getItem("gym_lg_weekstate");
+        const currentMonday = getMondayKey(new Date());
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.mondayKey !== currentMonday) {
+            return { mondayKey: currentMonday, currentDayIndex: 0, completedDaysThisWeek: [] };
+          }
+          return parsed;
+        }
+        return { mondayKey: currentMonday, currentDayIndex: 0, completedDaysThisWeek: [] };
+      });
+
+      const [defaultRestSec, setDefaultRestSec] = useState(() => {
+        const saved = localStorage.getItem("gym_lg_rest");
+        return saved ? Number(saved) : 180;
+      });
+
+      const [timerSec, setTimerSec] = useState(0);
+      const [timerRunning, setTimerRunning] = useState(false);
+
+      const [apiKey, setApiKey] = useState(() => localStorage.getItem("gym_lg_apikey") || "");
+      const [aiPrompt, setAiPrompt] = useState("");
+      const [aiMessages, setAiMessages] = useState([
+        {
+          role: "assistant",
+          text: "¡Listo! Pegame tu rutina nueva para que actualice los 4 días automáticamente, pedime que ajuste el timer o consultame comparativas de tus semanas y meses."
+        }
+      ]);
+      const [aiLoading, setAiLoading] = useState(false);
+
+      useEffect(() => {
+        localStorage.setItem("gym_lg_routine", JSON.stringify(routine));
+      }, [routine]);
+
+      useEffect(() => {
+        localStorage.setItem("gym_lg_logs", JSON.stringify(logs));
+      }, [logs]);
+
+      useEffect(() => {
+        localStorage.setItem("gym_lg_weekstate", JSON.stringify(weekState));
+      }, [weekState]);
+
+      useEffect(() => {
+        localStorage.setItem("gym_lg_rest", String(defaultRestSec));
+      }, [defaultRestSec]);
+
+      useEffect(() => {
+        localStorage.setItem("gym_lg_apikey", apiKey);
+      }, [apiKey]);
+
+      // Timer countdown
+      useEffect(() => {
+        if (!timerRunning || timerSec <= 0) {
+          if (timerSec <= 0 && timerRunning) {
+            setTimerRunning(false);
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          }
+          return;
+        }
+        const t = setInterval(() => {
+          setTimerSec((prev) => Math.max(0, prev - 1));
+        }, 1000);
+        return () => clearInterval(t);
+      }, [timerRunning, timerSec]);
+
+      const currentDayObj = routine[weekState.currentDayIndex] || routine[0];
+
+      // Ghost Data & Live drafts for current day exercises
+      const [drafts, setDrafts] = useState({});
+      const [savedInSession, setSavedInSession] = useState({});
+
+      useEffect(() => {
+        const nextDrafts = {};
+        currentDayObj.exercises.forEach((ex) => {
+          const prevLogs = logs.filter((l) => l.exerciseId === ex.id || l.exerciseName === ex.name);
+          const lastLog = prevLogs.length > 0 ? prevLogs[prevLogs.length - 1] : null;
+          nextDrafts[ex.id] = {
+            weight: lastLog ? lastLog.weight : ex.targetWeight,
+            reps: lastLog ? lastLog.reps : ex.targetReps,
+            sets: lastLog ? lastLog.sets : ex.targetSets,
+            effort: "justo",
+            ghostWeight: lastLog ? lastLog.weight : null,
+            ghostReps: lastLog ? lastLog.reps : null
+          };
+        });
+        setDrafts(nextDrafts);
+        setSavedInSession({});
+      }, [weekState.currentDayIndex, routine]);
+
+      const updateDraft = (exId, field, value) => {
+        setDrafts((prev) => ({
+          ...prev,
+          [exId]: {
+            ...prev[exId],
+            [field]: value
+          }
+        }));
+      };
+
+      const evaluateOutcome = (ex, d) => {
+        const targetVol = ex.targetWeight * ex.targetReps * ex.targetSets;
+        const actualVol = d.weight * d.reps * d.sets;
+        if (d.weight > ex.targetWeight || (d.weight === ex.targetWeight && d.reps > ex.targetReps)) {
+          return { status: "exceeded", label: "Objetivo Superado", color: "text-white bg-white/15 border-white/30" };
+        }
+        if (d.weight === ex.targetWeight && d.reps === ex.targetReps && d.sets >= ex.targetSets) {
+          return { status: "met", label: "Objetivo Alcanzado", color: "text-zinc-200 bg-white/10 border-white/20" };
+        }
+        if (actualVol >= targetVol) {
+          return { status: "met", label: "Volumen Alcanzado", color: "text-zinc-200 bg-white/10 border-white/20" };
+        }
+        return { status: "below", label: "Bajo el Objetivo", color: "text-zinc-400 bg-zinc-900/80 border-white/10" };
+      };
+
+      const handleSaveExercise = (ex) => {
+        const d = drafts[ex.id];
+        if (!d) return;
+        const outcome = evaluateOutcome(ex, d);
+        const entry = {
+          id: Date.now() + "_" + ex.id,
+          date: new Date().toISOString(),
+          mondayKey: weekState.mondayKey,
+          dayIndex: weekState.currentDayIndex,
+          dayName: currentDayObj.name,
+          exerciseId: ex.id,
+          exerciseName: ex.name,
+          targetWeight: ex.targetWeight,
+          targetReps: ex.targetReps,
+          targetSets: ex.targetSets,
+          weight: Number(d.weight),
+          reps: Number(d.reps),
+          sets: Number(d.sets),
+          effort: d.effort,
+          status: outcome.status
+        };
+        setLogs((prev) => [...prev, entry]);
+        setSavedInSession((prev) => ({ ...prev, [ex.id]: outcome }));
+        setTimerSec(defaultRestSec);
+        setTimerRunning(true);
+      };
+
+      const handleFinishDay = () => {
+        const nextDay = (weekState.currentDayIndex + 1) % routine.length;
+        const updatedCompleted = Array.from(new Set([...weekState.completedDaysThisWeek, weekState.currentDayIndex]));
+        setWeekState({
+          ...weekState,
+          currentDayIndex: nextDay,
+          completedDaysThisWeek: updatedCompleted
+        });
+        setShowWelcome(true);
+      };
+
+      // Monthly summary stats (last 30 days)
+      const monthlyReport = useMemo(() => {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 30);
+        const recent = logs.filter((l) => new Date(l.date) >= cutoff);
+        const byExercise = {};
+        recent.forEach((l) => {
+          if (!byExercise[l.exerciseName]) byExercise[l.exerciseName] = [];
+          byExercise[l.exerciseName].push(l);
+        });
+        const items = Object.keys(byExercise).map((name) => {
+          const arr = byExercise[name];
+          const first = arr[0];
+          const last = arr[arr.length - 1];
+          return {
+            name,
+            sessions: arr.length,
+            weightDiff: +(last.weight - first.weight).toFixed(1),
+            repsDiff: last.reps - first.reps,
+            currentWeight: last.weight,
+            lastEffort: last.effort
+          };
+        });
+        return {
+          totalEntries: recent.length,
+          uniqueDays: new Set(recent.map((r) => r.date.slice(0, 10))).size,
+          items
+        };
+      }, [logs]);
+
+      const handleSendAi = async (customText) => {
+        const query = (customText ?? aiPrompt).trim();
+        if (!query) return;
+        setAiPrompt("");
+        setAiMessages((prev) => [...prev, { role: "user", text: query }]);
+
+        // Quick local commands
+        const timerMatch = query.match(/timer.*?(\d+)\s*min/i) || query.match(/descanso.*?(\d+)\s*min/i);
+        if (timerMatch) {
+          const newSec = Number(timerMatch[1]) * 60;
+          setDefaultRestSec(newSec);
+          setAiMessages((prev) => [
+            ...prev,
+            { role: "assistant", text: `Listo, actualicé tu timer de descanso por defecto a ${formatTime(newSec)}.` }
+          ]);
+          return;
+        }
+
+        if (!apiKey) {
+          setAiMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              text: "Para usar el análisis libre o parsear rutinas con IA desde tu PWA en Chrome, pegá tu Gemini API Key gratuita en la pestaña Ajustes."
+            }
+          ]);
+          return;
+        }
+
+        setAiLoading(true);
+        try {
+          const systemPrompt = `Sos el asistente integrado en la app de gimnasio del usuario (hablale de vos en español rioplatense, breve y directo).
+Rutina actual JSON: ${JSON.stringify(routine)}
+Historial de registros JSON: ${JSON.stringify(logs.slice(-80))}
+Timer actual (segundos): ${defaultRestSec}
+
+Si el usuario te pide cambiar o cargar una nueva rutina o cambiar el timer, devolvé un bloque JSON válido encerrado en \`\`\`json ... \`\`\` con la clave "newRoutine" (respetando la estructura de array con dayIndex, name, focus, exercises[{id, name, targetSets, targetReps, targetWeight}]) o "newRestSec" (número), además de tu confirmación en texto. Si pide análisis de progreso, respondé con datos concretos de sus pesos y repeticiones.`;
+
+          const resp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: systemPrompt + "
+
+Pedido del usuario: " + query }] }]
+              })
+            }
+          );
+          const data = await resp.json();
+          const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No pude procesar la respuesta.";
+
+          const jsonMatch = reply.match(/```json\s*([\s\S]*?)```/);
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[1]);
+              if (Array.isArray(parsed.newRoutine)) setRoutine(parsed.newRoutine);
+              if (typeof parsed.newRestSec === "number") setDefaultRestSec(parsed.newRestSec);
+            } catch (e) {}
+          }
+
+          const cleanReply = reply.replace(/```json[\s\S]*?```/g, "").trim();
+          setAiMessages((prev) => [...prev, { role: "assistant", text: cleanReply || "¡Cambios aplicados!" }]);
+        } catch (err) {
+          setAiMessages((prev) => [
+            ...prev,
+            { role: "assistant", text: "Error al conectar con Gemini API. Verificá tu API Key en Ajustes." }
+          ]);
+        } finally {
+          setAiLoading(false);
+        }
+      };
+
+      const exportBackup = () => {
+        const blob = new Blob([JSON.stringify({ routine, logs, weekState, defaultRestSec }, null, 2)], {
+          type: "application/json"
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `gym-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+      };
+
+      const importBackup = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (data.routine) setRoutine(data.routine);
+            if (data.logs) setLogs(data.logs);
+            if (data.weekState) setWeekState(data.weekState);
+            if (data.defaultRestSec) setDefaultRestSec(data.defaultRestSec);
+            alert("Historial y rutina restaurados correctamente.");
+          } catch (err) {
+            alert("Archivo inválido.");
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      return (
+        <div className="max-w-md mx-auto min-h-screen pb-32 px-4 pt-5 flex flex-col justify-between">
+          {/* Top Bar */}
+          <div>
+            <header className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-400 font-semibold">Liquid Glass Edition</p>
+                <h1 className="text-xl font-bold tracking-tight text-white">GYM TRACKER</h1>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {routine.map((d, idx) => {
+                  const isDone = weekState.completedDaysThisWeek.includes(idx);
+                  const isCurrent = weekState.currentDayIndex === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${
+                        isCurrent
+                          ? "bg-white text-black border-white shadow-sm"
+                          : isDone
+                          ? "bg-white/15 text-white border-white/25"
+                          : "bg-white/5 text-zinc-500 border-white/10"
+                      }`}
+                    >
+                      D{idx + 1}
+                    </div>
+                  );
+                })}
+              </div>
+            </header>
+
+            {/* WORKOUT TAB */}
+            {activeTab === "workout" && (
+              <div>
+                {showWelcome ? (
+                  <div className="liquid-card rounded-3xl p-6 space-y-6">
+                    <div className="space-y-1.5">
+                      <span className="inline-block text-[11px] uppercase tracking-widest px-3 py-1 rounded-full bg-white/10 border border-white/15 text-zinc-300">
+                        Tu sesión de hoy
+                      </span>
+                      <h2 className="text-2xl font-extrabold text-white pt-1">{currentDayObj.name}</h2>
+                      <p className="text-sm text-zinc-400">{currentDayObj.focus}</p>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <p className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">
+                        Ejercicios y objetivos ({currentDayObj.exercises.length})
+                      </p>
+                      {currentDayObj.exercises.map((ex, i) => (
+                        <div
+                          key={ex.id}
+                          className="flex items-center justify-between py-2.5 px-3.5 rounded-2xl bg-white/[0.04] border border-white/10"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 h-6 rounded-full bg-white/10 text-xs flex items-center justify-center font-bold text-zinc-300">
+                              {i + 1}
+                            </span>
+                            <span className="text-sm font-medium text-zinc-100">{ex.name}</span>
+                          </div>
+                          <span className="text-xs font-semibold text-zinc-300 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
+                            {ex.targetSets}×{ex.targetReps} · {ex.targetWeight}kg
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setShowWelcome(false)}
+                      className="w-full py-4 rounded-2xl liquid-btn-primary font-bold text-sm tracking-wide flex items-center justify-center gap-2"
+                    >
+                      <span>Iniciar rutina de hoy</span>
+                      <span>→</span>
+                    </button>
+
+                    <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-zinc-400">
+                      <span>¿Querés elegir otro día manualmente?</span>
+                      <div className="flex gap-1.5">
+                        {routine.map((d, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setWeekState({ ...weekState, currentDayIndex: idx })}
+                            className={`px-2 py-1 rounded-lg border ${
+                              weekState.currentDayIndex === idx
+                                ? "bg-white/20 text-white border-white/30"
+                                : "bg-white/5 text-zinc-400 border-white/10"
+                            }`}
+                          >
+                            D{idx + 1}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => setShowWelcome(true)}
+                        className="liquid-btn px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-300"
+                      >
+                        ← Volver a bienvenida
+                      </button>
+                      <span className="text-xs text-zinc-400 font-medium">{currentDayObj.name}</span>
+                    </div>
+
+                    {currentDayObj.exercises.map((ex) => {
+                      const d = drafts[ex.id] || {
+                        weight: ex.targetWeight,
+                        reps: ex.targetReps,
+                        sets: ex.targetSets,
+                        effort: "justo"
+                      };
+                      const savedOutcome = savedInSession[ex.id];
+
+                      return (
+                        <div key={ex.id} className="liquid-card rounded-3xl p-5 space-y-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h3 className="text-base font-bold text-white">{ex.name}</h3>
+                              <p className="text-xs text-zinc-400 mt-0.5">
+                                Objetivo: <span className="text-zinc-200 font-semibold">{ex.targetSets} series × {ex.targetReps} reps · {ex.targetWeight} kg</span>
+                              </p>
+                            </div>
+                            {savedOutcome && (
+                              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${savedOutcome.color}`}>
+                                {savedOutcome.label}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Aligned Controls Grid */}
+                          <div className="grid grid-cols-3 gap-2.5">
+                            {/* Weight */}
+                            <div className="bg-black/40 border border-white/10 rounded-2xl p-2.5 flex flex-col items-center">
+                              <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1.5">
+                                Peso (kg)
+                              </span>
+                              <div className="w-full grid grid-cols-[32px_1fr_32px] items-center gap-1">
+                                <button
+                                  onClick={() => updateDraft(ex.id, "weight", Math.max(0, +(Number(d.weight) - 2.5).toFixed(1)))}
+                                  className="h-8 w-8 rounded-xl liquid-btn flex items-center justify-center text-sm font-bold text-white"
+                                >
+                                  −
+                                </button>
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  value={d.weight}
+                                  onChange={(e) => updateDraft(ex.id, "weight", e.target.value)}
+                                  className="w-full bg-transparent text-center font-bold text-sm text-white focus:outline-none"
+                                />
+                                <button
+                                  onClick={() => updateDraft(ex.id, "weight", +(Number(d.weight) + 2.5).toFixed(1))}
+                                  className="h-8 w-8 rounded-xl liquid-btn flex items-center justify-center text-sm font-bold text-white"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Reps */}
+                            <div className="bg-black/40 border border-white/10 rounded-2xl p-2.5 flex flex-col items-center">
+                              <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1.5">
+                                Repes
+                              </span>
+                              <div className="w-full grid grid-cols-[32px_1fr_32px] items-center gap-1">
+                                <button
+                                  onClick={() => updateDraft(ex.id, "reps", Math.max(1, Number(d.reps) - 1))}
+                                  className="h-8 w-8 rounded-xl liquid-btn flex items-center justify-center text-sm font-bold text-white"
+                                >
+                                  −
+                                </button>
+                                <input
+                                  type="number"
+                                  value={d.reps}
+                                  onChange={(e) => updateDraft(ex.id, "reps", e.target.value)}
+                                  className="w-full bg-transparent text-center font-bold text-sm text-white focus:outline-none"
+                                />
+                                <button
+                                  onClick={() => updateDraft(ex.id, "reps", Number(d.reps) + 1)}
+                                  className="h-8 w-8 rounded-xl liquid-btn flex items-center justify-center text-sm font-bold text-white"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Sets */}
+                            <div className="bg-black/40 border border-white/10 rounded-2xl p-2.5 flex flex-col items-center">
+                              <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1.5">
+                                Series
+                              </span>
+                              <div className="w-full grid grid-cols-[32px_1fr_32px] items-center gap-1">
+                                <button
+                                  onClick={() => updateDraft(ex.id, "sets", Math.max(1, Number(d.sets) - 1))}
+                                  className="h-8 w-8 rounded-xl liquid-btn flex items-center justify-center text-sm font-bold text-white"
+                                >
+                                  −
+                                </button>
+                                <input
+                                  type="number"
+                                  value={d.sets}
+                                  onChange={(e) => updateDraft(ex.id, "sets", e.target.value)}
+                                  className="w-full bg-transparent text-center font-bold text-sm text-white focus:outline-none"
+                                />
+                                <button
+                                  onClick={() => updateDraft(ex.id, "sets", Number(d.sets) + 1)}
+                                  className="h-8 w-8 rounded-xl liquid-btn flex items-center justify-center text-sm font-bold text-white"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Effort selector + Save button */}
+                          <div className="flex items-center justify-between gap-2 pt-1">
+                            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
+                              {["liviano", "justo", "al limite"].map((ef) => (
+                                <button
+                                  key={ef}
+                                  onClick={() => updateDraft(ex.id, "effort", ef)}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium capitalize transition-all ${
+                                    d.effort === ef
+                                      ? "bg-white text-black font-semibold"
+                                      : "text-zinc-400 hover:text-white"
+                                  }`}
+                                >
+                                  {ef}
+                                </button>
+                              ))}
+                            </div>
+
+                            <button
+                              onClick={() => handleSaveExercise(ex)}
+                              className={`px-4 py-2.5 rounded-xl font-bold text-xs tracking-wide ${
+                                savedOutcome ? "liquid-btn text-white" : "liquid-btn-primary"
+                              }`}
+                            >
+                              {savedOutcome ? "Actualizar" : "Guardar ejercicio"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <button
+                      onClick={handleFinishDay}
+                      className="w-full py-4 rounded-2xl liquid-btn-primary font-bold text-sm tracking-wide mt-4"
+                    >
+                      Finalizar {currentDayObj.name} y avanzar al siguiente día →
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* MONTHLY SUMMARY TAB */}
+            {activeTab === "summary" && (
+              <div className="space-y-4">
+                <div className="liquid-card rounded-3xl p-5 space-y-3">
+                  <h2 className="text-lg font-bold text-white">Balance del Ciclo Mensual</h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5">
+                      <p className="text-xs text-zinc-400">Días entrenados (30d)</p>
+                      <p className="text-2xl font-extrabold text-white mt-1">{monthlyReport.uniqueDays}</p>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5">
+                      <p className="text-xs text-zinc-400">Ejercicios registrados</p>
+                      <p className="text-2xl font-extrabold text-white mt-1">{monthlyReport.totalEntries}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="liquid-card rounded-3xl p-5 space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-300">
+                    Progreso por Ejercicio
+                  </h3>
+                  {monthlyReport.items.length === 0 ? (
+                    <p className="text-xs text-zinc-400 py-4">
+                      Todavía no hay registros guardados en este ciclo. Completá ejercicios en la pestaña Entrenar.
+                    </p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {monthlyReport.items.map((item) => (
+                        <div
+                          key={item.name}
+                          className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-white">{item.name}</p>
+                            <p className="text-xs text-zinc-400">
+                              Actual: {item.currentWeight} kg · Sensación: {item.lastEffort}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-white">
+                              {item.weightDiff >= 0 ? `+${item.weightDiff}` : item.weightDiff} kg
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* AI ASSISTANT TAB */}
+            {activeTab === "ai" && (
+              <div className="liquid-card rounded-3xl p-5 space-y-4">
+                <div>
+                  <h2 className="text-base font-bold text-white">Asistente IA de Rutina y Progreso</h2>
+                  <p className="text-xs text-zinc-400">
+                    Pedile que cambie ejercicios, modifique el timer o compare tus semanas.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => handleSendAi("Cambiá el timer de descanso a 2 minutos")}
+                    className="liquid-btn px-2.5 py-1.5 rounded-xl text-xs text-zinc-200"
+                  >
+                    ⏱️ Timer a 2 min
+                  </button>
+                  <button
+                    onClick={() => handleSendAi("Cambiá el timer de descanso a 3 minutos")}
+                    className="liquid-btn px-2.5 py-1.5 rounded-xl text-xs text-zinc-200"
+                  >
+                    ⏱️ Timer a 3 min
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleSendAi("Haceme un resumen de mi progreso general en pesos y repeticiones")
+                    }
+                    className="liquid-btn px-2.5 py-1.5 rounded-xl text-xs text-zinc-200"
+                  >
+                    📊 Analizar progreso
+                  </button>
+                </div>
+
+                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                  {aiMessages.map((m, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                        m.role === "user"
+                          ? "bg-white text-black font-medium ml-8"
+                          : "bg-white/10 text-zinc-100 border border-white/10 mr-6"
+                      }`}
+                    >
+                      {m.text}
+                    </div>
+                  ))}
+                  {aiLoading && (
+                    <div className="text-xs text-zinc-400 italic px-2">Procesando con Gemini...</div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <textarea
+                    rows="2"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="Pegá tu rutina nueva o pedile un análisis..."
+                    className="flex-1 bg-black/50 border border-white/15 rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
+                  />
+                  <button
+                    onClick={() => handleSendAi()}
+                    className="liquid-btn-primary px-4 rounded-2xl font-bold text-xs"
+                  >
+                    Enviar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SETTINGS / BACKUP TAB */}
+            {activeTab === "settings" && (
+              <div className="liquid-card rounded-3xl p-5 space-y-5">
+                <div>
+                  <h2 className="text-base font-bold text-white">Ajustes, Timer y Backup</h2>
+                  <p className="text-xs text-zinc-400">Configuración local en tu dispositivo</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-zinc-300">
+                    Timer de descanso por defecto ({formatTime(defaultRestSec)})
+                  </label>
+                  <div className="flex gap-2">
+                    {[90, 120, 150, 180, 240].map((sec) => (
+                      <button
+                        key={sec}
+                        onClick={() => setDefaultRestSec(sec)}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold border ${
+                          defaultRestSec === sec
+                            ? "bg-white text-black border-white"
+                            : "liquid-btn text-zinc-300"
+                        }`}
+                      >
+                        {formatTime(sec)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                  <label className="text-xs font-semibold text-zinc-300">
+                    Gemini API Key (Opcional, para IA ilimitada en Chrome)
+                  </label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="w-full bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                  <p className="text-xs font-semibold text-zinc-300">Respaldo de Datos (Exportar / Importar)</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={exportBackup}
+                      className="flex-1 py-2.5 rounded-xl liquid-btn text-xs font-semibold text-white"
+                    >
+                      ⬇ Exportar Backup
+                    </button>
+                    <label className="flex-1 py-2.5 rounded-xl liquid-btn text-xs font-semibold text-white text-center cursor-pointer">
+                      ⬆ Importar Backup
+                      <input type="file" accept=".json" onChange={importBackup} className="hidden" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Floating Liquid Glass Timer Pill */}
+          {(timerRunning || timerSec > 0) && (
+            <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-sm liquid-card rounded-2xl px-4 py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <span className="text-xs text-zinc-300 font-medium">Descanso</span>
+                <span className="text-base font-extrabold text-white font-mono">{formatTime(timerSec)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setTimerSec((s) => Math.max(0, s - 15))}
+                  className="liquid-btn px-2 py-1 rounded-lg text-[11px] font-bold"
+                >
+                  -15s
+                </button>
+                <button
+                  onClick={() => setTimerSec((s) => s + 15)}
+                  className="liquid-btn px-2 py-1 rounded-lg text-[11px] font-bold"
+                >
+                  +15s
+                </button>
+                <button
+                  onClick={() => setTimerRunning((r) => !r)}
+                  className="liquid-btn px-2.5 py-1 rounded-lg text-[11px] font-bold"
+                >
+                  {timerRunning ? "Pausa" : "Seguir"}
+                </button>
+                <button
+                  onClick={() => {
+                    setTimerRunning(false);
+                    setTimerSec(0);
+                  }}
+                  className="text-zinc-400 hover:text-white px-1.5 text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Navigation Bar */}
+          <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-sm liquid-card rounded-2xl p-1.5 grid grid-cols-4 gap-1">
+            {[
+              { id: "workout", label: "Entrenar" },
+              { id: "summary", label: "Mes" },
+              { id: "ai", label: "IA Rutina" },
+              { id: "settings", label: "Ajustes" }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                  activeTab === tab.id
+                    ? "bg-white text-black shadow"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
